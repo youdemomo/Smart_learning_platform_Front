@@ -70,10 +70,10 @@
     const captchaCode = ref('')
 
     const loginRules = {
-        role: [{ required: true, message: '请选择身份', trigger: 'change' }],
+        role: [{ required: true, message: '请选择登录身份', trigger: 'change' }],
         username: [
             { required: true, message: '请输入用户名', trigger: 'blur' },
-            { min: 3, max: 50, message: '用户名长度在 3 到 50 个字符', trigger: 'blur' },
+            { min: 3, max: 50, message: '用户名长度需为 3～50 个字符', trigger: 'blur' },
         ],
         password: [
             { required: true, message: '请输入密码', trigger: 'blur' },
@@ -81,7 +81,7 @@
         ],
         captcha: [
             { required: true, message: '请输入验证码', trigger: 'blur' },
-            { len: 4, message: '验证码为4位字符', trigger: 'blur' },
+            { len: 4, message: '验证码需为 4 位字符', trigger: 'blur' },
         ],
     }
 
@@ -164,53 +164,49 @@
         if (!loginFormRef.value) return
 
         await loginFormRef.value.validate(async (valid) => {
-            if (valid) {
-                // 验证图形验证码
-                if (loginForm.captcha.toLowerCase() !== captchaCode.value.toLowerCase()) {
-                    ElMessage.error('验证码错误')
+            if (!valid) return
+
+            // 验证图形验证码
+            if (loginForm.captcha.trim().toLowerCase() !== captchaCode.value.toLowerCase()) {
+                ElMessage.error('验证码错误，请重新输入')
+                refreshCaptcha()
+                return
+            }
+
+            loading.value = true
+            try {
+                const response = await authStore.loginUser({
+                    username: loginForm.username,
+                    password: loginForm.password,
+                })
+
+                // 验证登录角色是否匹配
+                const userRole = authStore.userRole
+                if (userRole !== loginForm.role && userRole !== 'ADMIN') {
+                    const roleName = userRole === 'STUDENT' ? '学生' : '培训机构'
+                    ElMessage.error(`身份不匹配：当前账号属于【${roleName}】身份`)
+                    authStore.logout()
                     refreshCaptcha()
                     return
                 }
 
-                loading.value = true
-                try {
-                    const response = await authStore.loginUser({
-                        username: loginForm.username,
-                        password: loginForm.password,
-                    })
+                // 登录成功提示
+                ElMessage.success(response?.message || '登录成功')
 
-                    // 验证登录角色是否匹配
-                    const userRole = authStore.userRole
-                    if (userRole !== loginForm.role && userRole !== 'ADMIN') {
-                        ElMessage.error(`身份不匹配，您的账号是${userRole === 'STUDENT' ? '学生' : '培训机构'}身份`)
-                        authStore.logout()
-                        refreshCaptcha()
-                        loading.value = false
-                        return
-                    }
-
-                    ElMessage.success(response.message || '登录成功')
-
-                    // 根据用户角色跳转到不同页面
-                    if (userRole === 'ADMIN') {
-                        // 管理员跳转到管理后台
-                        router.push('/admin/dashboard')
-                    } else if (userRole === 'INSTITUTION') {
-                        // 培训机构跳转到首页（后续可改为机构管理页面）
-                        router.push('/home')
-                    } else if (userRole === 'STUDENT') {
-                        // 学生跳转到首页
-                        router.push('/home')
-                    } else {
-                        // 默认跳转到首页
-                        router.push('/home')
-                    }
-                } catch (error) {
-                    ElMessage.error(error.message || '登录失败')
-                    refreshCaptcha()
-                } finally {
-                    loading.value = false
+                // 根据用户角色跳转
+                if (userRole === 'ADMIN') {
+                    router.push('/admin/dashboard')
+                } else {
+                    router.push('/home')
                 }
+            } catch (error) {
+                // 兼容 axios、fetch、后端返回结构、网络异常等各种错误格式
+                const errMsg = error?.response?.data?.message || error?.message || '登录失败，请稍后重试'
+
+                ElMessage.error(errMsg)
+                refreshCaptcha()
+            } finally {
+                loading.value = false
             }
         })
     }
