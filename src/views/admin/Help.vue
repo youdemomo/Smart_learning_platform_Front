@@ -1,7 +1,36 @@
 <template>
-  <div>二级-帮助文档</div>
+    <div class="help-management">
+        <el-card>
+            <template #header>
+                <div class="card-header">
+                    <span>帮助文档</span>
+                </div>
+            </template>
+
+            <div class="content-placeholder">
+                <el-icon :size="80" color="#ccc"><Document /></el-icon>
+                <p>帮助文档功能开发中...</p>
+            </div>
+        </el-card>
+    </div>
 </template>
 
-<script setup></script>
+<script setup>
+    import { Document } from '@element-plus/icons-vue'
+</script>
 
-<style scoped></style>
+<style scoped>
+    .content-placeholder {
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+    }
+
+    .content-placeholder p {
+        margin-top: 20px;
+        font-size: 16px;
+    }
+</style>
